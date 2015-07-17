@@ -143,4 +143,10 @@ type Config struct {
 	// By default, all syscalls are allowed with actions to allow, trap, kill, or return an errno
 	// can be specified on a per syscall basis.
 	Seccomp *Seccomp `json:"seccomp"`
+
+	// Prestart commands are executed before the user supplied command is executed from init.
+	PreStart []Command `json:"prestart"`
+
+	// PostStop commands are executed after the container init process exits.
+	PostStop []Command `json:"poststop"`
 }
