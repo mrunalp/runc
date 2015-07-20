@@ -176,7 +176,10 @@ func (c *linuxContainer) newInitProcess(p *Process, cmd *exec.Cmd, parentPipe, c
 		childPipe:  childPipe,
 		parentPipe: parentPipe,
 		manager:    c.cgroupManager,
+		container:  c,
 		config:     c.newInitConfig(p),
+		prestart:   c.config.Prestart,
+		poststop:   c.config.Poststop,
 	}, nil
 }
 

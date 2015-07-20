@@ -145,8 +145,8 @@ type Config struct {
 	Seccomp *Seccomp `json:"seccomp"`
 
 	// Prestart commands are executed before the user supplied command is executed from init.
-	PreStart []Command `json:"prestart"`
+	Prestart []Command `json:"prestart"`
 
 	// PostStop commands are executed after the container init process exits.
-	PostStop []Command `json:"poststop"`
+	Poststop []Command `json:"poststop"`
 }

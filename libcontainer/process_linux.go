@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/system"
 )
 
@@ -165,6 +166,8 @@ type initProcess struct {
 	manager    cgroups.Manager
 	container  *linuxContainer
 	fds        []string
+	prestart   []configs.Command
+	poststop   []configs.Command
 }
 
 func (p *initProcess) pid() int {
@@ -205,6 +208,20 @@ func (p *initProcess) start() error {
 	if err := p.createNetworkInterfaces(); err != nil {
 		return newSystemError(err)
 	}
+
+	p.container.updateState(p)
+	state, err := p.container.currentState()
+	if err != nil {
+		return newSystemError(err)
+	}
+
+	// Call the prestart hooks
+	for _, prestartcmd := range p.prestart {
+		if err := runCmd(prestartcmd, state); err != nil {
+			return newSystemError(err)
+		}
+	}
+
 	if err := p.sendConfig(); err != nil {
 		return newSystemError(err)
 	}
@@ -228,6 +245,15 @@ func (p *initProcess) wait() (*os.ProcessState, error) {
 	// we should kill all processes in cgroup when init is died if we use host PID namespace
 	if p.cmd.SysProcAttr.Cloneflags&syscall.CLONE_NEWPID == 0 {
 		killCgroupProcesses(p.manager)
+	}
+	// Call the poststop hooks
+	state, err := p.container.currentState()
+	if err != nil {
+		return nil, err
+	}
+	for _, poststopcmd := range p.poststop {
+		// TODO: Log the errors
+		runCmd(poststopcmd, state)
 	}
 	return p.cmd.ProcessState, nil
 }
@@ -269,6 +295,28 @@ func (p *initProcess) createNetworkInterfaces() error {
 			return err
 		}
 		p.config.Networks = append(p.config.Networks, n)
+	}
+	return nil
+}
+
+func runCmd(command configs.Command, state *State) error {
+	cmd := exec.Command(command.Path, command.Args[:]...)
+	cmd.Env = command.Env
+	cmd.Dir = command.Dir
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if err := json.NewEncoder(stdin).Encode(state); err != nil {
+		return err
+	}
+	stdin.Close()
+	if err := cmd.Wait(); err != nil {
+		return err
 	}
 	return nil
 }
