@@ -210,14 +210,11 @@ func (p *initProcess) start() error {
 	}
 
 	p.container.updateState(p)
-	state, err := p.container.currentState()
-	if err != nil {
-		return newSystemError(err)
-	}
 
 	// Call the prestart hooks
+	statePath := p.container.stateFilePath()
 	for _, prestartcmd := range p.prestart {
-		if err := runCmd(prestartcmd, state); err != nil {
+		if err := runCmd(prestartcmd, statePath); err != nil {
 			return newSystemError(err)
 		}
 	}
@@ -246,15 +243,14 @@ func (p *initProcess) wait() (*os.ProcessState, error) {
 	if p.cmd.SysProcAttr.Cloneflags&syscall.CLONE_NEWPID == 0 {
 		killCgroupProcesses(p.manager)
 	}
+
 	// Call the poststop hooks
-	state, err := p.container.currentState()
-	if err != nil {
-		return nil, err
-	}
+	statePath := p.container.stateFilePath()
 	for _, poststopcmd := range p.poststop {
 		// TODO: Log the errors
-		runCmd(poststopcmd, state)
+		runCmd(poststopcmd, statePath)
 	}
+
 	return p.cmd.ProcessState, nil
 }
 
@@ -299,22 +295,21 @@ func (p *initProcess) createNetworkInterfaces() error {
 	return nil
 }
 
-func runCmd(command configs.Command, state *State) error {
+func runCmd(command configs.Command, statePath string) error {
 	cmd := exec.Command(command.Path, command.Args[:]...)
 	cmd.Env = command.Env
 	cmd.Dir = command.Dir
 
-	stdin, err := cmd.StdinPipe()
+	stateFile, err := os.Open(statePath)
 	if err != nil {
 		return err
 	}
+	defer stateFile.Close()
+
+	cmd.Stdin = stateFile
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	if err := json.NewEncoder(stdin).Encode(state); err != nil {
-		return err
-	}
-	stdin.Close()
 	if err := cmd.Wait(); err != nil {
 		return err
 	}

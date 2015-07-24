@@ -730,6 +730,10 @@ func (c *linuxContainer) updateState(process parentProcess) error {
 	return json.NewEncoder(f).Encode(state)
 }
 
+func (c *linuxContainer) stateFilePath() string {
+	return filepath.Join(c.root, stateFilename)
+}
+
 func (c *linuxContainer) currentStatus() (Status, error) {
 	if _, err := os.Stat(filepath.Join(c.root, "checkpoint")); err == nil {
 		return Checkpointed, nil
