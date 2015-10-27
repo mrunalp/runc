@@ -84,6 +84,7 @@ type data struct {
 }
 
 func (m *Manager) Apply(pid int) (err error) {
+	return nil
 	if m.Cgroups == nil {
 		return nil
 	}
@@ -129,6 +130,7 @@ func (m *Manager) Apply(pid int) (err error) {
 }
 
 func (m *Manager) Destroy() error {
+	return nil
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := cgroups.RemovePaths(m.Paths); err != nil {

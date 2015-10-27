@@ -51,7 +51,6 @@ var startCommand = cli.Command{
 		}
 
 		if os.Geteuid() != 0 {
-			logrus.Fatal("runc should be run as root")
 		}
 		status, err := startContainer(context, spec, rspec)
 		if err != nil {
@@ -89,6 +88,9 @@ func startContainer(context *cli.Context, spec *specs.LinuxSpec, rspec *specs.Li
 	rootuid, err := config.HostUID()
 	if err != nil {
 		return -1, err
+	}
+	if rootuid == 0 && os.Geteuid() != 0 {
+		logrus.Fatal("runc should be run as root as no user namespaces specified")
 	}
 	factory, err := loadFactory(context)
 	if err != nil {

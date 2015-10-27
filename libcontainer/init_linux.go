@@ -180,22 +180,22 @@ func setupUser(config *initConfig) error {
 		return err
 	}
 
-	var addGroups []int
-	if len(config.Config.AdditionalGroups) > 0 {
-		addGroups, err = user.GetAdditionalGroupsPath(config.Config.AdditionalGroups, groupPath)
-		if err != nil {
-			return err
-		}
-	}
+//	var addGroups []int
+//	if len(config.Config.AdditionalGroups) > 0 {
+//		addGroups, err = user.GetAdditionalGroupsPath(config.Config.AdditionalGroups, groupPath)
+//		if err != nil {
+//			return err
+//		}
+//	}
 	// before we change to the container's user make sure that the processes STDIO
 	// is correctly owned by the user that we are switching to.
 	if err := fixStdioPermissions(execUser); err != nil {
 		return err
 	}
-	suppGroups := append(execUser.Sgids, addGroups...)
-	if err := syscall.Setgroups(suppGroups); err != nil {
-		return err
-	}
+//	suppGroups := append(execUser.Sgids, addGroups...)
+//	if err := syscall.Setgroups(suppGroups); err != nil {
+//		return err
+//	}
 
 	if err := system.Setgid(execUser.Gid); err != nil {
 		return err
@@ -233,9 +233,10 @@ func fixStdioPermissions(u *user.ExecUser) error {
 		if s.Rdev == null.Rdev {
 			continue
 		}
-		if err := syscall.Fchown(int(fd), u.Uid, u.Gid); err != nil {
-			return err
-		}
+
+//		if err := syscall.Fchown(int(fd), u.Uid, u.Gid); err != nil {
+//			return err
+//		}
 	}
 	return nil
 }

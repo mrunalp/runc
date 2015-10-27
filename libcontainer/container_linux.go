@@ -171,7 +171,7 @@ func (c *linuxContainer) newInitProcess(p *Process, cmd *exec.Cmd, parentPipe, c
 			// user mappings are not supported
 			return nil, err
 		}
-		enableSetgroups(cmd.SysProcAttr)
+		// enableSetgroups(cmd.SysProcAttr)
 		// Default to root user when user namespaces are enabled.
 		if cmd.SysProcAttr.Credential == nil {
 			cmd.SysProcAttr.Credential = &syscall.Credential{}
