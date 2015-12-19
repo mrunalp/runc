@@ -77,7 +77,7 @@ func init() {
 }
 
 func startContainer(context *cli.Context, spec *specs.LinuxSpec, rspec *specs.LinuxRuntimeSpec) (int, error) {
-	config, err := createLibcontainerConfig(context.GlobalString("id"), spec, rspec)
+	config, err := createLibcontainerConfig(context.GlobalString("id"), spec, rspec, context.GlobalBool("systemd-cgroup"))
 	if err != nil {
 		return -1, err
 	}

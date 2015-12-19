@@ -104,7 +104,11 @@ func loadFactory(context *cli.Context) (libcontainer.Factory, error) {
 	if err != nil {
 		return nil, err
 	}
-	return libcontainer.New(abs, libcontainer.Cgroupfs, func(l *libcontainer.LinuxFactory) error {
+	cgroupManager := libcontainer.Cgroupfs
+	if context.GlobalBool("systemd-cgroup") {
+		cgroupManager = libcontainer.SystemdCgroups
+	}
+	return libcontainer.New(abs, cgroupManager, func(l *libcontainer.LinuxFactory) error {
 		l.CriuPath = context.GlobalString("criu")
 		return nil
 	})

@@ -70,7 +70,7 @@ var restoreCommand = cli.Command{
 		if err != nil {
 			fatal(err)
 		}
-		config, err := createLibcontainerConfig(context.GlobalString("id"), spec, rspec)
+		config, err := createLibcontainerConfig(context.GlobalString("id"), spec, rspec, context.GlobalBool("systemd-cgroup"))
 		if err != nil {
 			fatal(err)
 		}

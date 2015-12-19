@@ -329,7 +329,7 @@ func checkSpecVersion(s *specs.LinuxSpec) error {
 	return nil
 }
 
-func createLibcontainerConfig(cgroupName string, spec *specs.LinuxSpec, rspec *specs.LinuxRuntimeSpec) (*configs.Config, error) {
+func createLibcontainerConfig(cgroupName string, spec *specs.LinuxSpec, rspec *specs.LinuxRuntimeSpec, systemdCgroup bool) (*configs.Config, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -384,7 +384,7 @@ func createLibcontainerConfig(cgroupName string, spec *specs.LinuxSpec, rspec *s
 		}
 		config.Rlimits = append(config.Rlimits, rl)
 	}
-	c, err := createCgroupConfig(cgroupName, rspec, config.Devices)
+	c, err := createCgroupConfig(cgroupName, systemdCgroup, rspec, config.Devices)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +432,7 @@ func createLibcontainerMount(cwd, dest string, m specs.Mount) *configs.Mount {
 	}
 }
 
-func createCgroupConfig(name string, spec *specs.LinuxRuntimeSpec, devices []*configs.Device) (*configs.Cgroup, error) {
+func createCgroupConfig(name string, systemdCgroup bool, spec *specs.LinuxRuntimeSpec, devices []*configs.Device) (*configs.Cgroup, error) {
 	myCgroupPath, err := cgroups.GetThisCgroupDir("devices")
 	if err != nil {
 		return nil, err
@@ -441,6 +441,10 @@ func createCgroupConfig(name string, spec *specs.LinuxRuntimeSpec, devices []*co
 		Name:      name,
 		Parent:    myCgroupPath,
 		Resources: &configs.Resources{},
+	}
+	if systemdCgroup {
+		c.Parent = "system.slice"
+		c.ScopePrefix = "runc"
 	}
 	c.Resources.AllowedDevices = append(devices, allowedDevices...)
 	r := spec.Linux.Resources
