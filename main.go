@@ -79,6 +79,10 @@ func main() {
 			Value: "criu",
 			Usage: "path to the criu binary used for checkpoint and restore",
 		},
+		cli.BoolFlag{
+			Name:  "systemd-cgroup",
+			Usage: "enable systemd cgroup support",
+		},
 	}
 	app.Commands = []cli.Command{
 		checkpointCommand,

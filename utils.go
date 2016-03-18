@@ -146,7 +146,11 @@ func loadFactory(context *cli.Context) (libcontainer.Factory, error) {
 	if err != nil {
 		return nil, err
 	}
-	return libcontainer.New(abs, libcontainer.Cgroupfs, func(l *libcontainer.LinuxFactory) error {
+	cgroupManager := libcontainer.Cgroupfs
+	if context.GlobalBool("systemd-cgroup") {
+		cgroupManager = libcontainer.SystemdCgroups
+	}
+	return libcontainer.New(abs, cgroupManager, func(l *libcontainer.LinuxFactory) error {
 		l.CriuPath = context.GlobalString("criu")
 		return nil
 	})
@@ -285,7 +289,7 @@ func createPidFile(path string, process *libcontainer.Process) error {
 }
 
 func createContainer(context *cli.Context, id string, spec *specs.Spec) (libcontainer.Container, error) {
-	config, err := createLibcontainerConfig(id, spec)
+	config, err := createLibcontainerConfig(id, context.GlobalBool("systemd-cgroup"), spec)
 	if err != nil {
 		return nil, err
 	}

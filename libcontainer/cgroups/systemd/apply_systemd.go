@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	systemdUtil "github.com/coreos/go-systemd/util"
 	"github.com/godbus/dbus"
@@ -224,6 +225,7 @@ func (m *Manager) Apply(pid int) error {
 		}
 	}
 
+	logrus.Infof("unitname: %v, properties: %v", unitName, properties)
 	if _, err := theConn.StartTransientUnit(unitName, "replace", properties, nil); err != nil {
 		return err
 	}

@@ -215,7 +215,7 @@ func loadSpec(cPath string) (spec *specs.Spec, err error) {
 	return spec, validateProcessSpec(&spec.Process)
 }
 
-func createLibcontainerConfig(cgroupName string, spec *specs.Spec) (*configs.Config, error) {
+func createLibcontainerConfig(cgroupName string, useSystemdCgroup bool, spec *specs.Spec) (*configs.Config, error) {
 	// runc's cwd will always be the bundle path
 	rcwd, err := os.Getwd()
 	if err != nil {
@@ -266,7 +266,7 @@ func createLibcontainerConfig(cgroupName string, spec *specs.Spec) (*configs.Con
 	if err := setupUserNamespace(spec, config); err != nil {
 		return nil, err
 	}
-	c, err := createCgroupConfig(cgroupName, spec)
+	c, err := createCgroupConfig(cgroupName, useSystemdCgroup, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +311,7 @@ func createLibcontainerMount(cwd string, m specs.Mount) *configs.Mount {
 	}
 }
 
-func createCgroupConfig(name string, spec *specs.Spec) (*configs.Cgroup, error) {
+func createCgroupConfig(name string, useSystemdCgroup bool, spec *specs.Spec) (*configs.Cgroup, error) {
 	var (
 		err          error
 		myCgroupPath string
@@ -330,6 +330,11 @@ func createCgroupConfig(name string, spec *specs.Spec) (*configs.Cgroup, error) 
 	c := &configs.Cgroup{
 		Path:      myCgroupPath,
 		Resources: &configs.Resources{},
+	}
+	if useSystemdCgroup {
+		c.Name = name
+		c.Parent = "system.slice"
+		c.ScopePrefix = "runc"
 	}
 	c.Resources.AllowedDevices = allowedDevices
 	r := spec.Linux.Resources
