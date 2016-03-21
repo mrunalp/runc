@@ -15,7 +15,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	systemdDbus "github.com/coreos/go-systemd/dbus"
-	systemdUtil "github.com/coreos/go-systemd/util"
 	"github.com/godbus/dbus"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
@@ -85,7 +84,8 @@ func newProp(name string, units interface{}) systemdDbus.Property {
 }
 
 func UseSystemd() bool {
-	if !systemdUtil.IsRunningSystemd() {
+	s, err := os.Stat("/run/systemd/system")
+	if err != nil || !s.IsDir() {
 		return false
 	}
 
@@ -103,7 +103,7 @@ func UseSystemd() bool {
 		hasStartTransientUnit = true
 
 		// But if we get UnknownMethod error we don't
-		if _, err := theConn.StartTransientUnit("test.scope", "invalid", nil, nil); err != nil {
+		if _, err := theConn.StartTransientUnit("test.scope", "invalid"); err != nil {
 			if dbusError, ok := err.(dbus.Error); ok {
 				if dbusError.Name == "org.freedesktop.DBus.Error.UnknownMethod" {
 					hasStartTransientUnit = false
@@ -118,7 +118,7 @@ func UseSystemd() bool {
 		scope := fmt.Sprintf("libcontainer-%d-systemd-test-default-dependencies.scope", os.Getpid())
 		testScopeExists := true
 		for i := 0; i <= testScopeWait; i++ {
-			if _, err := theConn.StopUnit(scope, "replace", nil); err != nil {
+			if _, err := theConn.StopUnit(scope, "replace"); err != nil {
 				if dbusError, ok := err.(dbus.Error); ok {
 					if strings.Contains(dbusError.Name, "org.freedesktop.systemd1.NoSuchUnit") {
 						testScopeExists = false
@@ -137,7 +137,7 @@ func UseSystemd() bool {
 		// Assume StartTransientUnit on a scope allows DefaultDependencies
 		hasTransientDefaultDependencies = true
 		ddf := newProp("DefaultDependencies", false)
-		if _, err := theConn.StartTransientUnit(scope, "replace", []systemdDbus.Property{ddf}, nil); err != nil {
+		if _, err := theConn.StartTransientUnit(scope, "replace", ddf); err != nil {
 			if dbusError, ok := err.(dbus.Error); ok {
 				if strings.Contains(dbusError.Name, "org.freedesktop.DBus.Error.PropertyReadOnly") {
 					hasTransientDefaultDependencies = false
@@ -146,7 +146,7 @@ func UseSystemd() bool {
 		}
 
 		// Not critical because of the stop unit logic above.
-		theConn.StopUnit(scope, "replace", nil)
+		theConn.StopUnit(scope, "replace")
 	}
 	return hasStartTransientUnit
 }
@@ -199,6 +199,8 @@ func (m *Manager) Apply(pid int) error {
 		properties = append(properties,
 			newProp("DefaultDependencies", false))
 	}
+		properties = append(properties,
+			newProp("DefaultDependencies", false))
 
 	if c.Resources.Memory != 0 {
 		properties = append(properties,
@@ -225,8 +227,8 @@ func (m *Manager) Apply(pid int) error {
 		}
 	}
 
-	logrus.Infof("unitname: %v, properties: %v", unitName, properties)
-	if _, err := theConn.StartTransientUnit(unitName, "replace", properties, nil); err != nil {
+	logrus.Debugf("unitname: %v, properties: %v", unitName, properties)
+	if _, err := theConn.StartTransientUnit(unitName, "replace", properties...); err != nil {
 		return err
 	}
 
@@ -256,7 +258,7 @@ func (m *Manager) Destroy() error {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	theConn.StopUnit(getUnitName(m.Cgroups), "replace", nil)
+	theConn.StopUnit(getUnitName(m.Cgroups), "replace")
 	if err := cgroups.RemovePaths(m.Paths); err != nil {
 		return err
 	}

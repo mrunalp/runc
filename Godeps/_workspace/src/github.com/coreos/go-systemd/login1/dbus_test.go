@@ -14,25 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package activation
+package login1
 
 import (
-	"fmt"
-	"net"
+	"testing"
 )
 
-// Listeners returns net.Listeners for all socket activated fds passed to this process.
-func Listeners(unsetEnv bool) ([]net.Listener, error) {
-	files := Files(unsetEnv)
-	listeners := make([]net.Listener, len(files))
+// TestNew ensures that New() works without errors.
+func TestNew(t *testing.T) {
+	_, err := New()
 
-	for i, f := range files {
-		var err error
-		listeners[i], err = net.FileListener(f)
-		if err != nil {
-			return nil, fmt.Errorf("Error setting up FileListener for fd %d: %s", f.Fd(), err.Error())
-		}
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	return listeners, nil
 }
