@@ -8,6 +8,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/opencontainers/runc/libcontainer/apparmor"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/keys"
@@ -43,6 +44,12 @@ func (l *linuxStandardInit) getSessionRingParams() (string, uint32, uint32) {
 const PR_SET_NO_NEW_PRIVS = 0x26
 
 func (l *linuxStandardInit) Init() error {
+	f, err := os.OpenFile("/tmp/runc-init.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND|os.O_SYNC, 0666)
+	if err != nil {
+		return err
+	}
+	logrus.SetOutput(f)
+
 	ringname, keepperms, newperms := l.getSessionRingParams()
 
 	// do not inherit the parent's session keyring
@@ -98,7 +105,9 @@ func (l *linuxStandardInit) Init() error {
 			return err
 		}
 	}
+	logrus.Infof("Mounting read only paths")
 	for _, path := range l.config.Config.ReadonlyPaths {
+		logrus.Infof(path)
 		if err := remountReadonly(path); err != nil {
 			return err
 		}

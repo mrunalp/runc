@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/symlink"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
@@ -719,6 +721,8 @@ func mountPropagate(m *configs.Mount, rootfs string, mountLabel string) error {
 	if !strings.HasPrefix(dest, rootfs) {
 		dest = filepath.Join(rootfs, dest)
 	}
+
+	logrus.Infof("Mounting %+v", m)
 
 	if err := syscall.Mount(m.Source, dest, m.Device, uintptr(flags), data); err != nil {
 		return err
