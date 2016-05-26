@@ -72,6 +72,10 @@
 		{
 			"ImportPath": "github.com/vishvananda/netlink",
 			"Rev": "1e2e08e8a2dcdacaae3f14ac44c5cfa31361f270"
+		},
+		{
+			"ImportPath": "github.com/mrunalp/fileutils",
+			"Rev": "c463a3a74be993d8ad99a6fb3252d25a74870a1c"
 		}
 	]
 }
