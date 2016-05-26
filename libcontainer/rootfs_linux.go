@@ -16,6 +16,7 @@ import (
 
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/symlink"
+	"github.com/mrunalp/fileutils"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/label"
@@ -152,10 +153,22 @@ func mountToRootfs(m *configs.Mount, rootfs, mountLabel string) error {
 		}
 		return nil
 	case "tmpfs":
+		copyUp := m.Extensions&configs.EXT_COPYUP == configs.EXT_COPYUP
+		tmpDir := ""
 		stat, err := os.Stat(dest)
 		if err != nil {
 			if err := os.MkdirAll(dest, 0755); err != nil {
 				return err
+			}
+		}
+		if copyUp {
+			tmpDir, err = ioutil.TempDir("/run", "runctmpdir")
+			if err != nil {
+				return fmt.Errorf("failed to create tmpdir: %v", err)
+			}
+			if err := fileutils.CopyDirectory(dest, tmpDir); err != nil {
+				_ = os.RemoveAll(tmpDir)
+				return fmt.Errorf("failed to copy %s to %s: %v", dest, tmpDir, err)
 			}
 		}
 		if err := mountPropagate(m, rootfs, mountLabel); err != nil {
@@ -164,6 +177,12 @@ func mountToRootfs(m *configs.Mount, rootfs, mountLabel string) error {
 		if stat != nil {
 			if err = os.Chmod(dest, stat.Mode()); err != nil {
 				return err
+			}
+		}
+		if copyUp {
+			defer os.RemoveAll(tmpDir)
+			if err := fileutils.CopyDirectory(tmpDir, dest); err != nil {
+				return fmt.Errorf("failed to copy %s to %s: %v", tmpDir, dest, err)
 			}
 		}
 		return nil
