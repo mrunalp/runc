@@ -45,7 +45,6 @@ struct nlconfig_t {
 	char *gidmap;
 	int gidmap_len;
 	uint8_t is_setgroup;
-	int consolefd;
 };
 
 /*
@@ -54,11 +53,10 @@ struct nlconfig_t {
  */
 #define INIT_MSG		62000
 #define CLONE_FLAGS_ATTR	27281
-#define CONSOLE_PATH_ATTR	27282
-#define NS_PATHS_ATTR		27283
-#define UIDMAP_ATTR		27284
-#define GIDMAP_ATTR		27285
-#define SETGROUP_ATTR		27286
+#define NS_PATHS_ATTR		27282
+#define UIDMAP_ATTR		27283
+#define GIDMAP_ATTR		27284
+#define SETGROUP_ATTR		27285
 
 /*
  * Use the raw syscall for versions of glibc which don't include a function for
@@ -294,7 +292,6 @@ static void nl_parse(int fd, struct nlconfig_t *config)
 
 	/* Parse the netlink payload. */
 	config->data = data;
-	config->consolefd = -1;
 	while (current < data + size) {
 		struct nlattr *nlattr = (struct nlattr *)current;
 		size_t payload_len = nlattr->nla_len - NLA_HDRLEN;
@@ -306,18 +303,6 @@ static void nl_parse(int fd, struct nlconfig_t *config)
 		switch (nlattr->nla_type) {
 		case CLONE_FLAGS_ATTR:
 			config->cloneflags = readint32(current);
-			break;
-		case CONSOLE_PATH_ATTR:
-			/*
-			 * The context in which this is done (before or after we
-			 * join the other namespaces) will affect how the path
-			 * resolution of the console works. This order is not
-			 * decided here, but rather in container_linux.go. We just
-			 * follow the order given by the netlink message.
-			 */
-			config->consolefd = open(current, O_RDWR);
-			if (config->consolefd < 0)
-				bail("failed to open console %s", current);
 			break;
 		case NS_PATHS_ATTR:{
 				/*
@@ -426,7 +411,6 @@ void nsexec(void)
 		 * start_child() code after forking in the parent.
 		 */
 		uint8_t s = 0;
-		int consolefd = config.consolefd;
 
 		/* Close the writing side of pipe. */
 		close(syncpipe[1]);
@@ -446,17 +430,6 @@ void nsexec(void)
 
 		if (setgroups(0, NULL) < 0)
 			bail("setgroups failed");
-
-		if (consolefd != -1) {
-			if (ioctl(consolefd, TIOCSCTTY, 0) < 0)
-				bail("ioctl TIOCSCTTY failed");
-			if (dup3(consolefd, STDIN_FILENO, 0) != STDIN_FILENO)
-				bail("failed to dup stdin");
-			if (dup3(consolefd, STDOUT_FILENO, 0) != STDOUT_FILENO)
-				bail("failed to dup stdout");
-			if (dup3(consolefd, STDERR_FILENO, 0) != STDERR_FILENO)
-				bail("failed to dup stderr");
-		}
 
 		/* Free netlink data. */
 		nl_free(&config);
