@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "cmsg.h"
 
@@ -39,14 +40,30 @@
 ssize_t sendfd(int sockfd, int fd)
 {
 	struct msghdr msg = {0};
+	struct iovec iov[1] = {0};
 	struct cmsghdr *cmsg;
+	char dummy[1] = {0};
 	int *fdptr;
+	int ret;
 
 	union {
 		char buf[CMSG_SPACE(sizeof(&fd))];
 		struct cmsghdr align;
 	} u;
 
+	/*
+	 * We need to send some other data along with ancilliary data, otherwise
+	 * the other side won't recieve any data. This is very well-hidden in the
+	 * documentation.
+	 */
+	dummy[0] = 0x42;
+	iov[0].iov_base = dummy;
+	iov[0].iov_len = sizeof(dummy);
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
 	msg.msg_control = u.buf;
 	msg.msg_controllen = sizeof(u.buf);
 
@@ -58,7 +75,11 @@ ssize_t sendfd(int sockfd, int fd)
 	fdptr = (int *) CMSG_DATA(cmsg);
 	memcpy(fdptr, &fd, sizeof(int));
 
-	return sendmsg(sockfd, &msg, 0);
+	ret = sendmsg(sockfd, &msg, 0);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 /*
@@ -71,8 +92,29 @@ ssize_t sendfd(int sockfd, int fd)
 int recvfd(int sockfd)
 {
 	struct msghdr msg = {0};
+	struct iovec iov[1] = {0};
 	struct cmsghdr *cmsg;
+	char dummy[1] = {0};
 	int *fdptr;
+
+	union {
+		char buf[CMSG_SPACE(sizeof(*fdptr))];
+		struct cmsghdr align;
+	} u;
+
+	/*
+	 * We need to "recieve" the non-ancilliary data even though we don't plan
+	 * to use it at all. Otherwise, things won't work as expected.
+	 */
+	iov[0].iov_base = dummy;
+	iov[0].iov_len = sizeof(dummy);
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = u.buf;
+	msg.msg_controllen = sizeof(u.buf);
 
 	ssize_t ret = recvmsg(sockfd, &msg, 0);
 	if (ret < 0)

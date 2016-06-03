@@ -8,7 +8,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/utils"
 )
 
-type syncType uint8
+type syncType string
 
 // Constants that are used for synchronisation between the parent and child
 // during container setup. They come in pairs (with procError being a generic
@@ -19,14 +19,20 @@ type syncType uint8
 // procHooks   --> [run hooks]
 //             <-- procResume
 //
+// procConsole --> [recvmsg()]
+// sendmsg(fd) -->
+//             <-- procFd
+//
 // procReady   --> [final setup]
 //             <-- procRun
 const (
-	procError syncType = iota
-	procReady
-	procRun
-	procHooks
-	procResume
+	procError   syncType = "procError"
+	procReady   syncType = "procReady"
+	procRun     syncType = "procRun"
+	procHooks   syncType = "procHooks"
+	procResume  syncType = "procResume"
+	procConsole syncType = "procConsole"
+	procFd      syncType = "procFd"
 )
 
 type syncT struct {

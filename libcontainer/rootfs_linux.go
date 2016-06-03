@@ -61,6 +61,7 @@ func prepareRootfs(config *configs.Config) (err error) {
 			}
 		}
 	}
+
 	if setupDev {
 		if err := createDevices(config); err != nil {
 			return newSystemErrorWithCause(err, "creating device nodes")
@@ -73,12 +74,6 @@ func prepareRootfs(config *configs.Config) (err error) {
 		}
 	}
 
-	return nil
-}
-
-// finalizeRootfs actually switches the root of the process and sets anything
-// to ro if necessary. You must call prepareRootfs first.
-func finalizeRootfs(config *configs.Config, console *linuxConsole) (err error) {
 	if err := syscall.Chdir(config.Rootfs); err != nil {
 		return newSystemErrorWithCausef(err, "changing dir to %q", config.Rootfs)
 	}
@@ -92,18 +87,18 @@ func finalizeRootfs(config *configs.Config, console *linuxConsole) (err error) {
 		return newSystemErrorWithCause(err, "jailing process inside rootfs")
 	}
 
-	setupDev := needsSetupDev(config)
 	if setupDev {
-		if console != nil {
-			if err := console.mount("/", config.MountLabel); err != nil {
-				return newSystemErrorWithCause(err, "mounting /dev/console inside container")
-			}
-		}
 		if err := reOpenDevNull(); err != nil {
 			return newSystemErrorWithCause(err, "reopening /dev/null inside container")
 		}
 	}
 
+	return nil
+}
+
+// finalizeRootfs actually switches the root of the process and sets anything
+// to ro if necessary. You must call prepareRootfs first.
+func finalizeRootfs(config *configs.Config) (err error) {
 	// remount dev as ro if specifed
 	for _, m := range config.Mounts {
 		if libcontainerUtils.CleanPath(m.Destination) == "/dev" {

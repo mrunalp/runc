@@ -4,7 +4,6 @@ package libcontainer
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"syscall"
@@ -18,7 +17,7 @@ import (
 )
 
 type linuxStandardInit struct {
-	pipe       io.ReadWriteCloser
+	pipe       *os.File
 	parentPid  int
 	stateDirFD int
 	config     *initConfig
@@ -59,18 +58,6 @@ func (l *linuxStandardInit) Init() error {
 		}
 	}
 
-	var console *linuxConsole
-	if l.config.Console != "" {
-		console = newConsoleFromPath(l.config.Console)
-		if err := console.dupStdio(); err != nil {
-			return err
-		}
-	}
-	if console != nil {
-		if err := system.Setctty(); err != nil {
-			return err
-		}
-	}
 	if err := setupNetwork(l.config); err != nil {
 		return err
 	}
@@ -95,9 +82,21 @@ func (l *linuxStandardInit) Init() error {
 		return err
 	}
 
+	// Set up the console. This has to be done *before* we finalize the rootfs,
+	// but *after* we've given the user the chance to set up all of the mounts
+	// they wanted.
+	if l.config.CreateConsole {
+		if err := setupConsole(l.pipe, l.config, true); err != nil {
+			return err
+		}
+		if err := system.Setctty(); err != nil {
+			return err
+		}
+	}
+
 	// Finish the rootfs setup.
 	if l.config.Config.Namespaces.Contains(configs.NEWNS) {
-		if err := finalizeRootfs(l.config.Config, console); err != nil {
+		if err := finalizeRootfs(l.config.Config); err != nil {
 			return err
 		}
 	}
