@@ -100,14 +100,45 @@ func (p *setnsProcess) start() (err error) {
 		return newSystemErrorWithCause(err, "writing config to pipe")
 	}
 
+	var (
+		ierr     *genericError
+		procSync syncT
+	)
+
+	dec := json.NewDecoder(p.parentPipe)
+loop:
+	for {
+		if err := dec.Decode(&procSync); err != nil {
+			if err == io.EOF {
+				break loop
+			}
+			return newSystemErrorWithCause(err, "decoding sync type from init pipe")
+		}
+		switch procSync.Type {
+		case procReady:
+			// This shouldn't happen.
+			panic("unexpected procReady in setns")
+		case procHooks:
+			// This shouldn't happen.
+			panic("unexpected procHooks in setns")
+		case procError:
+			// wait for the child process to fully complete and receive an error message
+			// if one was encoutered
+			if err := dec.Decode(&ierr); err != nil && err != io.EOF {
+				return newSystemErrorWithCause(err, "decoding proc error from init")
+			}
+			if ierr != nil {
+				break loop
+			}
+			// Programmer error.
+			panic("No error following JSON procError payload.")
+		default:
+			return newSystemError(fmt.Errorf("invalid JSON payload from child"))
+		}
+	}
+
 	if err := syscall.Shutdown(int(p.parentPipe.Fd()), syscall.SHUT_WR); err != nil {
 		return newSystemErrorWithCause(err, "calling shutdown on init pipe")
-	}
-	// wait for the child process to fully complete and receive an error message
-	// if one was encoutered
-	var ierr *genericError
-	if err := json.NewDecoder(p.parentPipe).Decode(&ierr); err != nil && err != io.EOF {
-		return newSystemErrorWithCause(err, "decoding init error from pipe")
 	}
 	// Must be done after Shutdown so the child will exit and we can wait for it.
 	if ierr != nil {
