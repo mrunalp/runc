@@ -33,8 +33,8 @@ type syncT struct {
 	Type syncType `json:"type"`
 }
 
-// Used to write to a synchronisation pipe. An error is returned if there was
-// a problem writing the payload.
+// writeSync is used to write to a synchronisation pipe. An error is returned
+// if there was a problem writing the payload.
 func writeSync(pipe io.Writer, sync syncType) error {
 	if err := utils.WriteJSON(pipe, syncT{sync}); err != nil {
 		return err
@@ -42,8 +42,8 @@ func writeSync(pipe io.Writer, sync syncType) error {
 	return nil
 }
 
-// Used to read from a synchronisation pipe. An error is returned if we got a
-// genericError, the pipe was closed, or we got an unexpected flag.
+// readSync is used to read from a synchronisation pipe. An error is returned
+// if we got a genericError, the pipe was closed, or we got an unexpected flag.
 func readSync(pipe io.Reader, expected syncType) error {
 	var procSync syncT
 	if err := json.NewDecoder(pipe).Decode(&procSync); err != nil {
@@ -63,6 +63,39 @@ func readSync(pipe io.Reader, expected syncType) error {
 
 		if procSync.Type != expected {
 			return fmt.Errorf("invalid synchronisation flag from parent")
+		}
+	}
+	return nil
+}
+
+// parseSync runs the given callback function on each syncT received from the
+// child. It will return once io.EOF is returned from the given pipe.
+func parseSync(pipe io.Reader, fn func(*syncT) error) error {
+	dec := json.NewDecoder(pipe)
+	for {
+		var sync syncT
+		if err := dec.Decode(&sync); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		// We handle this case outside fn for cleanliness reasons.
+		var ierr *genericError
+		if sync.Type == procError {
+			if err := dec.Decode(&ierr); err != nil && err != io.EOF {
+				return newSystemErrorWithCause(err, "decoding proc error from init")
+			}
+			if ierr != nil {
+				return ierr
+			}
+			// Programmer error.
+			panic("No error following JSON procError payload.")
+		}
+
+		if err := fn(&sync); err != nil {
+			return err
 		}
 	}
 	return nil
