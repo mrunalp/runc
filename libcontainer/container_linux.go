@@ -310,16 +310,9 @@ func (c *linuxContainer) newParentProcess(p *Process, doInit bool) (parentProces
 
 func (c *linuxContainer) commandTemplate(p *Process, childPipe, rootDir *os.File) (*exec.Cmd, error) {
 	cmd := exec.Command(c.initArgs[0], c.initArgs[1:]...)
-	// Since nil interfaces and nil pointers are different, we need to do this checking.
-	if p.Stdin != nil {
-		cmd.Stdin = p.Stdin
-	}
-	if p.Stdout != nil {
-		cmd.Stdout = p.Stdout
-	}
-	if p.Stderr != nil {
-		cmd.Stderr = p.Stderr
-	}
+	cmd.Stdin = p.Stdin
+	cmd.Stdout = p.Stdout
+	cmd.Stderr = p.Stderr
 	cmd.Dir = c.config.Rootfs
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
@@ -420,7 +413,15 @@ func (c *linuxContainer) newInitConfig(process *Process) *initConfig {
 	if len(process.Rlimits) > 0 {
 		cfg.Rlimits = process.Rlimits
 	}
-	if process.Stdin == nil || process.Stdout == nil || process.Stderr == nil {
+	/*
+	 * TODO: This should not be automatically computed. We should implement
+	 *       this as a field in libcontainer.Process, and then we only dup the
+	 *       new console over the file descriptors which were not explicitly
+	 *       set with process.Std{in,out,err}. The reason I've left this as-is
+	 *       is because the GetConsole() interface is new, there's no need to
+	 *       polish this interface right now.
+	 */
+	if process.Stdin == nil && process.Stdout == nil && process.Stderr == nil {
 		cfg.CreateConsole = true
 	}
 	return cfg
