@@ -12,98 +12,106 @@ function teardown() {
 }
 
 @test "events --stats" {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  # generate stats
-  runc events --stats test_busybox
-  [ "$status" -eq 0 ]
-  [[ "${lines[0]}" == [\{]"\"type\""[:]"\"stats\""[,]"\"id\""[:]"\"test_busybox\""[,]* ]]
-  [[ "${lines[0]}" == *"data"* ]]
+	# check state
+	wait_for_container 15 1 test_busybox
+
+	# generate stats
+	runc events --stats test_busybox
+	[ "$status" -eq 0 ]
+	[[ "${lines[0]}" == [\{]"\"type\""[:]"\"stats\""[,]"\"id\""[:]"\"test_busybox\""[,]* ]]
+	[[ "${lines[0]}" == *"data"* ]]
 }
 
 @test "events --interval default " {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  # spawn two sub processes (shells)
-  # the first sub process is an event logger that sends stats events to events.log
-  # the second sub process waits for an event that incudes test_busybox then
-  # kills the test_busybox container which causes the event logger to exit
-  (__runc events test_busybox > events.log) &
-  (
-    retry 10 1 eval "grep -q 'test_busybox' events.log"
-    teardown_running_container test_busybox
-  ) &
-  wait # wait for the above sub shells to finish
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  [ -e events.log ]
+	# spawn two sub processes (shells)
+	# the first sub process is an event logger that sends stats events to events.log
+	# the second sub process waits for an event that incudes test_busybox then
+	# kills the test_busybox container which causes the event logger to exit
+	(__runc events test_busybox > events.log) &
+	(
+	retry 10 1 eval "grep -q 'test_busybox' events.log"
+	teardown_running_container test_busybox
+	) &
+	wait # wait for the above sub shells to finish
 
-  run cat events.log
-  [ "$status" -eq 0 ]
-  [[ "${lines[0]}" == [\{]"\"type\""[:]"\"stats\""[,]"\"id\""[:]"\"test_busybox\""[,]* ]]
-  [[ "${lines[0]}" == *"data"* ]]
+	[ -e events.log ]
+
+	run cat events.log
+	[ "$status" -eq 0 ]
+	[[ "${lines[0]}" == [\{]"\"type\""[:]"\"stats\""[,]"\"id\""[:]"\"test_busybox\""[,]* ]]
+	[[ "${lines[0]}" == *"data"* ]]
 }
 
 @test "events --interval 1s " {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  # spawn two sub processes (shells)
-  # the first sub process is an event logger that sends stats events to events.log once a second
-  # the second sub process tries 3 times for an event that incudes test_busybox
-  # pausing 1s between each attempt then kills the test_busybox container which
-  # causes the event logger to exit
-  (__runc events --interval 1s test_busybox > events.log) &
-  (
-    retry 3 1 eval "grep -q 'test_busybox' events.log"
-    teardown_running_container test_busybox
-  ) &
-  wait # wait for the above sub shells to finish
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  [ -e events.log ]
+	# spawn two sub processes (shells)
+	# the first sub process is an event logger that sends stats events to events.log once a second
+	# the second sub process tries 3 times for an event that incudes test_busybox
+	# pausing 1s between each attempt then kills the test_busybox container which
+	# causes the event logger to exit
+	(__runc events --interval 1s test_busybox > events.log) &
+	(
+	retry 3 1 eval "grep -q 'test_busybox' events.log"
+	teardown_running_container test_busybox
+	) &
+	wait # wait for the above sub shells to finish
 
-  run eval "grep -q 'test_busybox' events.log"
-  [ "$status" -eq 0 ]
+	[ -e events.log ]
+
+	run eval "grep -q 'test_busybox' events.log"
+	[ "$status" -eq 0 ]
 }
 
 @test "events --interval 100ms " {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  #prove there is no carry over of events.log from a prior test
-  [ ! -e events.log ]
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  # spawn two sub processes (shells)
-  # the first sub process is an event logger that sends stats events to events.log once every 100ms
-  # the second sub process tries 3 times for an event that incudes test_busybox
-  # pausing 100s between each attempt then kills the test_busybox container which
-  # causes the event logger to exit
-  (__runc events --interval 100ms test_busybox > events.log) &
-  (
-    retry 3 0.100 eval "grep -q 'test_busybox' events.log"
-    teardown_running_container test_busybox
-  ) &
-  wait # wait for the above sub shells to finish
+	#prove there is no carry over of events.log from a prior test
+	[ ! -e events.log ]
 
-  [ -e events.log ]
+	# spawn two sub processes (shells)
+	# the first sub process is an event logger that sends stats events to events.log once every 100ms
+	# the second sub process tries 3 times for an event that incudes test_busybox
+	# pausing 100s between each attempt then kills the test_busybox container which
+	# causes the event logger to exit
+	(__runc events --interval 100ms test_busybox > events.log) &
+	(
+	retry 3 0.100 eval "grep -q 'test_busybox' events.log"
+	teardown_running_container test_busybox
+	) &
+	wait # wait for the above sub shells to finish
 
-  run eval "grep -q 'test_busybox' events.log"
-  [ "$status" -eq 0 ]
+	[ -e events.log ]
+
+	run eval "grep -q 'test_busybox' events.log"
+	[ "$status" -eq 0 ]
 }

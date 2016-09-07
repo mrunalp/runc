@@ -41,9 +41,10 @@ EOF
     )
     DATA=$(echo ${DATA} | sed 's/\n/\\n/g')
     sed -i "s/\(\"resources\": {\)/\1\n${DATA}/" ${BUSYBOX_BUNDLE}/config.json
+	sed -i 's/"terminal": true,/"terminal": false,/' ${BUSYBOX_BUNDLE}/config.json
 
     # run a detached busybox to work with
-    runc run -d --console /dev/pts/ptmx test_cgroups_kmem
+    runc run -d test_cgroups_kmem
     [ "$status" -eq 0 ]
     wait_for_container 15 1 test_cgroups_kmem
 
@@ -59,9 +60,10 @@ EOF
     requires cgroups_kmem
     # Add cgroup path
     sed -i 's/\("linux": {\)/\1\n    "cgroupsPath": "\/runc-cgroups-integration-test",/'  ${BUSYBOX_BUNDLE}/config.json
+	sed -i 's/"terminal": true,/"terminal": false,/' ${BUSYBOX_BUNDLE}/config.json
 
     # run a detached busybox to work with
-    runc run -d --console /dev/pts/ptmx test_cgroups_kmem
+    runc run -d test_cgroups_kmem
     [ "$status" -eq 0 ]
     wait_for_container 15 1 test_cgroups_kmem
 

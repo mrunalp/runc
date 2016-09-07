@@ -12,46 +12,52 @@ function teardown() {
 }
 
 @test "runc run detached" {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  testcontainer test_busybox running
+	# check state
+	wait_for_container 15 1 test_busybox
+
+	testcontainer test_busybox running
 }
 
 @test "runc run detached ({u,g}id != 0)" {
-  # replace "uid": 0 with "uid": 1000
-  # and do a similar thing for gid.
-  sed -i 's;"uid": 0;"uid": 1000;g' config.json
-  sed -i 's;"gid": 0;"gid": 100;g' config.json
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	# replace "uid": 0 with "uid": 1000
+	# and do a similar thing for gid.
+	sed -i 's;"uid": 0;"uid": 1000;g' config.json
+	sed -i 's;"gid": 0;"gid": 100;g' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  testcontainer test_busybox running
+	# check state
+	wait_for_container 15 1 test_busybox
+
+	testcontainer test_busybox running
 }
 
 @test "runc run detached --pid-file" {
-  # run busybox detached
-  runc run --pid-file pid.txt -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run --pid-file pid.txt -d test_busybox
+	[ "$status" -eq 0 ]
 
-  testcontainer test_busybox running
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  # check pid.txt was generated
-  [ -e pid.txt ]
+	testcontainer test_busybox running
 
-  run cat pid.txt
-  [ "$status" -eq 0 ]
-  [[ ${lines[0]} =~ [0-9]+ ]]
+	# check pid.txt was generated
+	[ -e pid.txt ]
+
+	run cat pid.txt
+	[ "$status" -eq 0 ]
+	[[ ${lines[0]} =~ [0-9]+ ]]
 }

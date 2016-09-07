@@ -3,48 +3,50 @@
 load helpers
 
 function setup() {
-  teardown_busybox
-  setup_busybox
+	teardown_busybox
+	setup_busybox
 }
 
 function teardown() {
-  teardown_busybox
+	teardown_busybox
 }
 
 @test "state" {
-  runc state test_busybox
-  [ "$status" -ne 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	runc state test_busybox
+	[ "$status" -ne 0 ]
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  testcontainer test_busybox running
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  # pause busybox
-  runc pause test_busybox
-  [ "$status" -eq 0 ]
+	testcontainer test_busybox running
 
-  # test state of busybox is paused
-  testcontainer test_busybox paused
+	# pause busybox
+	runc pause test_busybox
+	[ "$status" -eq 0 ]
 
-  # resume busybox
-  runc resume test_busybox
-  [ "$status" -eq 0 ]
+	# test state of busybox is paused
+	testcontainer test_busybox paused
 
-  # test state of busybox is back to running
-  testcontainer test_busybox running
+	# resume busybox
+	runc resume test_busybox
+	[ "$status" -eq 0 ]
 
-  runc kill test_busybox KILL
-  # wait for busybox to be in the destroyed state
-  retry 10 1 eval "__runc state test_busybox | grep -q 'stopped'"
+	# test state of busybox is back to running
+	testcontainer test_busybox running
 
-  # delete test_busybox
-  runc delete test_busybox
+	runc kill test_busybox KILL
+	# wait for busybox to be in the destroyed state
+	retry 10 1 eval "__runc state test_busybox | grep -q 'stopped'"
 
-  runc state test_busybox
-  [ "$status" -ne 0 ]
+	# delete test_busybox
+	runc delete test_busybox
+
+	runc state test_busybox
+	[ "$status" -ne 0 ]
 }

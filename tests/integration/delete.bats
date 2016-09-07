@@ -12,39 +12,43 @@ function teardown() {
 }
 
 @test "runc delete" {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  testcontainer test_busybox running
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  runc kill test_busybox KILL
-  # wait for busybox to be in the destroyed state
-  retry 10 1 eval "__runc state test_busybox | grep -q 'stopped'"
+	testcontainer test_busybox running
 
-  # delete test_busybox
-  runc delete test_busybox
+	runc kill test_busybox KILL
+	# wait for busybox to be in the destroyed state
+	retry 10 1 eval "__runc state test_busybox | grep -q 'stopped'"
 
-  runc state test_busybox
-  [ "$status" -ne 0 ]
+	# delete test_busybox
+	runc delete test_busybox
+
+	runc state test_busybox
+	[ "$status" -ne 0 ]
 }
 
 @test "runc delete --force" {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  # check state
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  testcontainer test_busybox running
+	# check state
+	wait_for_container 15 1 test_busybox
 
-  # force delete test_busybox
-  runc delete --force test_busybox
+	testcontainer test_busybox running
 
-  runc state test_busybox
-  [ "$status" -ne 0 ]
+	# force delete test_busybox
+	runc delete --force test_busybox
+
+	runc state test_busybox
+	[ "$status" -ne 0 ]
 }

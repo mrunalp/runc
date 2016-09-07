@@ -12,34 +12,38 @@ function teardown() {
 }
 
 @test "runc exec" {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  runc exec test_busybox echo Hello from exec
-  [ "$status" -eq 0 ]
-  echo text echoed = "'""${output}""'"
-  [[ "${output}" == *"Hello from exec"* ]]
+	wait_for_container 15 1 test_busybox
+
+	runc exec test_busybox echo Hello from exec
+	[ "$status" -eq 0 ]
+	echo text echoed = "'""${output}""'"
+	[[ "${output}" == *"Hello from exec"* ]]
 }
 
 @test "runc exec --pid-file" {
-  # run busybox detached
-  runc run -d --console /dev/pts/ptmx test_busybox
-  [ "$status" -eq 0 ]
+	sed -i 's/"terminal": true,/"terminal": false,/' config.json
 
-  wait_for_container 15 1 test_busybox
+	# run busybox detached
+	runc run -d test_busybox
+	[ "$status" -eq 0 ]
 
-  runc exec --pid-file pid.txt test_busybox echo Hello from exec
-  [ "$status" -eq 0 ]
-  echo text echoed = "'""${output}""'"
-  [[ "${output}" == *"Hello from exec"* ]]
+	wait_for_container 15 1 test_busybox
 
-  # check pid.txt was generated
-  [ -e pid.txt ]
+	runc exec --pid-file pid.txt test_busybox echo Hello from exec
+	[ "$status" -eq 0 ]
+	echo text echoed = "'""${output}""'"
+	[[ "${output}" == *"Hello from exec"* ]]
 
-  run cat pid.txt
-  [ "$status" -eq 0 ]
-  [[ ${lines[0]} =~ [0-9]+ ]]
+	# check pid.txt was generated
+	[ -e pid.txt ]
+
+	run cat pid.txt
+	[ "$status" -eq 0 ]
+	[[ ${lines[0]} =~ [0-9]+ ]]
 }
