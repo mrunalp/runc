@@ -103,17 +103,23 @@ func (p *setnsProcess) start() (err error) {
 	ierr := parseSync(p.parentPipe, func(sync *syncT) error {
 		switch sync.Type {
 		case procConsole:
-			// TODO: Actually use this fd.
+			if err := writeSync(p.parentPipe, procConsoleReq); err != nil {
+				return newSystemErrorWithCause(err, "writing syncT 'request fd'")
+			}
+
 			masterFile, err := utils.RecvFd(p.parentPipe)
 			if err != nil {
 				return newSystemErrorWithCause(err, "getting master pty from child pipe")
 			}
+
 			if p.process.consoleChan == nil {
+				// TODO: Don't panic here, do something more sane.
 				panic("consoleChan is nil")
 			}
 			p.process.consoleChan <- masterFile
-			if err := writeSync(p.parentPipe, procFd); err != nil {
-				return newSystemErrorWithCause(err, "writing syncT 'got fd'")
+
+			if err := writeSync(p.parentPipe, procConsoleAck); err != nil {
+				return newSystemErrorWithCause(err, "writing syncT 'ack fd'")
 			}
 		case procReady:
 			// This shouldn't happen.
@@ -298,17 +304,23 @@ func (p *initProcess) start() error {
 	ierr := parseSync(p.parentPipe, func(sync *syncT) error {
 		switch sync.Type {
 		case procConsole:
-			// TODO: Actually use this fd.
+			if err := writeSync(p.parentPipe, procConsoleReq); err != nil {
+				return newSystemErrorWithCause(err, "writing syncT 'request fd'")
+			}
+
 			masterFile, err := utils.RecvFd(p.parentPipe)
 			if err != nil {
 				return newSystemErrorWithCause(err, "getting master pty from child pipe")
 			}
+
 			if p.process.consoleChan == nil {
+				// TODO: Don't panic here, do something more sane.
 				panic("consoleChan is nil")
 			}
 			p.process.consoleChan <- masterFile
-			if err := writeSync(p.parentPipe, procFd); err != nil {
-				return newSystemErrorWithCause(err, "writing syncT 'got fd'")
+
+			if err := writeSync(p.parentPipe, procConsoleAck); err != nil {
+				return newSystemErrorWithCause(err, "writing syncT 'ack fd'")
 			}
 		case procReady:
 			if err := p.manager.Set(p.config.Config); err != nil {

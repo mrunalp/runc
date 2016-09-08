@@ -181,13 +181,23 @@ func setupConsole(pipe *os.File, config *initConfig, mount bool) error {
 		return err
 	}
 
+	// We need to have a two-way synchronisation here. Though it might seem
+	// pointless, it's important to make sure that the sendmsg(2) payload
+	// doesn't get swallowed by an out-of-place read(2) [which happens if the
+	// syscalls get reordered so that sendmsg(2) is before the other side's
+	// read(2) of procConsole].
+	if err := readSync(pipe, procConsoleReq); err != nil {
+		return err
+	}
+
 	// While we can access console.master, using the API is a good idea.
 	consoleFile := os.NewFile(linuxConsole.Fd(), "[master-pty]")
 	if err := utils.SendFd(pipe, consoleFile); err != nil {
 		return err
 	}
 
-	if err := readSync(pipe, procFd); err != nil {
+	// Make sure the other side recieved the fd.
+	if err := readSync(pipe, procConsoleAck); err != nil {
 		return err
 	}
 

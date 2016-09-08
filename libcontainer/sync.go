@@ -19,20 +19,22 @@ type syncType string
 // procHooks   --> [run hooks]
 //             <-- procResume
 //
-// procConsole --> [recvmsg()]
-// sendmsg(fd) -->
-//             <-- procFd
+// procConsole -->
+//             <-- procRequestFd
+//  [send(fd)] --> [recv(fd)]
+//             <-- procAckFd
 //
 // procReady   --> [final setup]
 //             <-- procRun
 const (
-	procError   syncType = "procError"
-	procReady   syncType = "procReady"
-	procRun     syncType = "procRun"
-	procHooks   syncType = "procHooks"
-	procResume  syncType = "procResume"
-	procConsole syncType = "procConsole"
-	procFd      syncType = "procFd"
+	procError      syncType = "procError"
+	procReady      syncType = "procReady"
+	procRun        syncType = "procRun"
+	procHooks      syncType = "procHooks"
+	procResume     syncType = "procResume"
+	procConsole    syncType = "procConsole"
+	procConsoleReq syncType = "procConsoleReq"
+	procConsoleAck syncType = "procConsoleAck"
 )
 
 type syncT struct {
