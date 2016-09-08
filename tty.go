@@ -13,6 +13,21 @@ import (
 	"github.com/opencontainers/runc/libcontainer"
 )
 
+// TerminalInfo is the structure which is passed as the nonancilliary
+// data in the sendmsg(2) call when runc is run with --console-socket.
+// It contains some information about the container which the console
+// master fd relates to (to allow for consumers to use a single unix
+// socket to handle multiple containers). This structure will probably
+// move to runtime-spec at some point
+type TerminalInfo struct {
+	// Container contains the ID of the container.
+	Container string `json:"container"`
+}
+
+func (ti *TerminalInfo) String() (string, error) {
+	return ti.Container, nil
+}
+
 type tty struct {
 	console   libcontainer.Console
 	state     *term.State
