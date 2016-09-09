@@ -103,6 +103,9 @@ struct file_t recvfd(int sockfd)
 
 	/* Allocate a buffer. */
 	file.tag = malloc(TAG_BUFFER);
+	if (file.tag == NULL) {
+		goto err;
+	}
 
 	/*
 	 * We need to "recieve" the non-ancilliary data even though we don't plan
@@ -131,6 +134,9 @@ struct file_t recvfd(int sockfd)
 	if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
 		return error("recvfd: expected correct CMSG_LEN in cmsg: %d", cmsg->cmsg_len);
 	*/
+	if (cmsg == NULL) {
+		goto err;
+	}
 
 	fdptr = (int *) CMSG_DATA(cmsg);
 	if (!fdptr || *fdptr < 0)
@@ -141,7 +147,8 @@ struct file_t recvfd(int sockfd)
 
 err:
 	olderrno = errno;
-	free(file.tag);
+	if (file.tag)
+		free(file.tag);
 	errno = olderrno;
 	return (struct file_t){0};
 }
