@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Linux Foundation
+ * Copyright 2016 SUSE Linux GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,15 @@
 
 #include <sys/types.h>
 
-int recvfd(int sockfd);
-ssize_t sendfd(int sockfd, int fd);
+/* TODO: Implement this properly with MSG_PEEK. */
+#define TAG_BUFFER 4096
+
+struct file_t {
+	char *tag;
+	int fd;
+};
+
+struct file_t recvfd(int sockfd);
+ssize_t sendfd(int sockfd, struct file_t file);
 
 #endif /* !defined(CMSG_H) */
