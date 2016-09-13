@@ -5,8 +5,6 @@ import (
 	"os"
 	"syscall"
 	"unsafe"
-
-	"github.com/opencontainers/runc/libcontainer/label"
 )
 
 // NewConsole returns an initalized console that can be used within a container by copying bytes
@@ -69,9 +67,6 @@ func (c *linuxConsole) Close() error {
 func (c *linuxConsole) mount(mountLabel string) error {
 	oldMask := syscall.Umask(0000)
 	defer syscall.Umask(oldMask)
-	if err := label.SetFileLabel(c.slavePath, mountLabel); err != nil {
-		return err
-	}
 	f, err := os.Create("/dev/console")
 	if err != nil && !os.IsExist(err) {
 		return err
