@@ -176,6 +176,61 @@ func getCgroupMountsHelper(ss map[string]bool, mi io.Reader) ([]Mount, error) {
 	return res, nil
 }
 
+func getCgroupSubsystemMountsHelper(ss map[string]bool, mi io.Reader) (map[string]Mount, error) {
+	resMap := make(map[string]Mount)
+	scanner := bufio.NewScanner(mi)
+	for scanner.Scan() {
+		txt := scanner.Text()
+		sepIdx := strings.Index(txt, " - ")
+		if sepIdx == -1 {
+			return nil, fmt.Errorf("invalid mountinfo format")
+		}
+		if txt[sepIdx+3:sepIdx+9] != "cgroup" {
+			continue
+		}
+		fields := strings.Split(txt, " ")
+		m := Mount{
+			Mountpoint: fields[4],
+			Root:       fields[3],
+		}
+		for _, opt := range strings.Split(fields[len(fields)-1], ",") {
+			if !ss[opt] {
+				continue
+			}
+			if strings.HasPrefix(opt, cgroupNamePrefix) {
+				m.Subsystems = append(m.Subsystems, opt[len(cgroupNamePrefix):])
+				resMap[opt[len(cgroupNamePrefix):]] = m
+			} else {
+				m.Subsystems = append(m.Subsystems, opt)
+				resMap[opt] = m
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return resMap, nil
+}
+
+func GetCgroupSubsystemMounts() (map[string]Mount, error) {
+	f, err := os.Open("/proc/self/mountinfo")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	all, err := ParseCgroupFile("/proc/self/cgroup")
+	if err != nil {
+		return nil, err
+	}
+
+	allMap := make(map[string]bool)
+	for s := range all {
+		allMap[s] = true
+	}
+	return getCgroupSubsystemMountsHelper(allMap, f)
+}
+
 func GetCgroupMounts() ([]Mount, error) {
 	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
