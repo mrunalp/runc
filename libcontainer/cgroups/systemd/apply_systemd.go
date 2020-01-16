@@ -171,6 +171,8 @@ func (m *LegacyManager) Apply(pid int) error {
 		properties = append(properties, newProp("PIDs", []uint32{uint32(pid)}))
 	}
 
+	properties = append(properties, newProp("CollectMode", "inactive-or-failed"))
+
 	// Check if we can delegate. This is only supported on systemd versions 218 and above.
 	if !strings.HasSuffix(unitName, ".slice") {
 		// Assume scopes always support delegation.
