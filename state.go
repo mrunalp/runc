@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/opencontainers/runc/libcontainer"
@@ -25,14 +26,17 @@ instance of a container.`,
 		}
 		container, err := getContainer(context)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to getContainer: %v\n", err)
 			return err
 		}
 		containerStatus, err := container.Status()
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get container status: %v\n", err)
 			return err
 		}
 		state, err := container.State()
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get container state: %v\n", err)
 			return err
 		}
 		pid := state.BaseState.InitProcessPid
@@ -52,9 +56,13 @@ instance of a container.`,
 		}
 		data, err := json.MarshalIndent(cs, "", "  ")
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to json indent: %v\n", err)
 			return err
 		}
-		os.Stdout.Write(data)
+		_, err = os.Stdout.Write(data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write data to stdout: %v\n", err)
+		}
 		return nil
 	},
 }
